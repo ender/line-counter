@@ -18,18 +18,18 @@ var (
 )
 
 func main() {
-	fmt.Print("Enter the absolute path to the folder you are trying to count lines from (path is case sensitive): ")
+	fmt.Print(":: Enter the directory path you are trying to count from (case sensitive):\n:: ")
 	inputScanner.Scan()
 
 	path := strings.TrimSpace(inputScanner.Text())
 
 	info, err := os.Stat(path)
 	if os.IsNotExist(err) {
-		fmt.Println("This file or directory is nonexistent.")
+		fmt.Println(err)
 		return
 	}
 
-	fmt.Print("Would you like to remove empty lines? (y/N) ")
+	fmt.Print(":: Would you like to remove empty lines? [y/N]: ")
 	inputScanner.Scan()
 
 	var remove bool
@@ -39,23 +39,41 @@ func main() {
 		remove = true
 	case "n":
 		remove = false
+	case "":
+		remove = false
 	default:
-		fmt.Println("Invalid option, not removing empty lines.")
+		fmt.Println(":: Invalid option, not removing empty lines.")
 		remove = false
 	}
 
-	fmt.Print("What is the file extension of the files you would like to count? Leave blank to count all files. ")
+	fmt.Print(":: Enter the file extension(s) would you like to include, separated by commas. Leave blank to count all files:\n:: ")
 	inputScanner.Scan()
 
-	var extension string
-	if sanitize(inputScanner.Text()) != "" {
-		extension = sanitize(inputScanner.Text())
+	var extensions []string
+	if strings.TrimSpace(inputScanner.Text()) != "" {
+		extensions = strings.Split(inputScanner.Text(), ",")
+		for i, ext := range extensions {
+			extensions[i] = sanitize(ext)
+		}
 	}
 
 	if !info.IsDir() {
 		file, err := os.Open(path)
 		if err != nil {
 			fmt.Println(err)
+			return
+		}
+
+		var count bool
+		for _, ext := range extensions {
+			if strings.HasSuffix(file.Name(), ext) {
+				count = true
+				break
+			}
+		}
+
+		if !count {
+			fmt.Println(":: The provided path lead to a file that does not contain any of the specified extensions.")
 			return
 		}
 
@@ -75,7 +93,15 @@ func main() {
 			return e
 		}
 
-		if i.IsDir() || (extension != "" && !strings.HasSuffix(i.Name(), extension)) {
+		count := len(extensions) == 0
+		for _, ext := range extensions {
+			if strings.HasSuffix(i.Name(), ext) {
+				count = true
+				break
+			}
+		}
+
+		if i.IsDir() || !count {
 			return nil
 		}
 
